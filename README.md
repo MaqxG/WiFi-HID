@@ -23,11 +23,17 @@ Plug the dongle into a computer: it shows up as a standard **USB composite HID d
 
 ## Hardware
 
+This project was built and tested with this ESP32-S3 USB dongle with a 0.96" LCD:
+
+**[ESP32-S3 0.96" LCD USB dongle (AliExpress)](https://aliexpress.com/item/1005009024098181.html)**
+
 | Part | Details |
 |------|---------|
 | MCU | ESP32-S3, 16 MB flash, 8 MB octal PSRAM (N16R8) |
 | Display | 0.96" IPS ST7735, 80×160, SPI |
 | Form factor | USB pocket dongle (native USB on GPIO19/20) |
+
+Other ESP32-S3 boards with native USB should work too. You would need to adjust the pins in [`include/pin_config.h`](include/pin_config.h) and the display setup in [`include/display.h`](include/display.h).
 
 Pin assignments are in [`include/pin_config.h`](include/pin_config.h):
 

@@ -12,13 +12,14 @@ Plug the dongle into a computer: it shows up as a standard **USB composite HID d
 
 ## Features
 
-- **USB composite HID**: keyboard, relative mouse and consumer control (media keys) over native USB, plus CDC serial for debugging.
+- **USB composite HID**: keyboard, relative mouse, consumer control (media keys) and gamepad over native USB, plus CDC serial for debugging.
 - **Self-hosted Wi-Fi AP** with a captive-portal DNS server, so phones usually open the control page automatically.
 - **Mobile web UI**, served from flash with no external assets, so it works fully offline:
   - **Type**: send text (optionally followed by Enter) and quick-command chips.
   - **Keys**: sticky Ctrl/Shift/Alt/Win modifiers, arrows, Home/End/PgUp/PgDn, F1–F12.
   - **Shortcuts**: Win+R, Alt+Tab, Alt+F4, Ctrl+C/V/X/Z/A/S/F, Ctrl+Alt+Del and more, plus a DuckyScript-style script runner.
   - **Mouse & Media**: touchpad, left/middle/right click, scroll, volume, mute, play/pause, next/previous.
+  - **Gamepad**: two multi-touch analog sticks, D-pad, A/B/X/Y, LB/RB, LT/RT, View/Home/Menu and L3/R3.
 - **0.96" ST7735 LCD** (80×160) showing the SSID, IP, connected client count and the last action. The BOOT button (or the web UI) flips the screen 180°.
 
 ## Hardware
@@ -100,11 +101,31 @@ The web UI is a thin client over a small JSON API, so you can also script the do
 | POST | `/api/media` | `{"action":"play_pause"}` (`vol_up`, `vol_down`, `mute`, `next`, `prev`) |
 | POST | `/api/script` | `{"script":"GUI r\nDELAY 500\nSTRING notepad\nENTER"}` |
 | POST | `/api/flip_screen` | `{}` |
+| POST | `/api/gamepad` | `{"x":0,"y":0,"z":0,"rz":0,"lt":0,"rt":0,"hat":0,"buttons":1}` (see below) |
 | GET | `/api/status` | |
 
 ```bash
 curl -X POST http://192.168.4.1/api/type -d '{"text":"Hello from curl","enter":true}'
 ```
+
+### Gamepad
+
+The dongle is a standard HID gamepad, so it works on Windows, Linux, macOS and Android, for example with Steam or emulators. `/api/gamepad` takes the **full state** on every call:
+
+| Field | Range | Meaning |
+|-------|-------|---------|
+| `x`, `y` | -127..127 | Left stick (positive `y` is down) |
+| `z`, `rz` | -127..127 | Right stick (positive `rz` is down) |
+| `lt`, `rt` | 0..255 | Triggers (also set button bits 8/9 above half travel) |
+| `hat` | 0..8 | D-pad: 0 = centre, 1 = up, then clockwise to 8 = up-left |
+| `buttons` | bitmask | Bit 0 A, 1 B, 3 X, 4 Y, 6 LB, 7 RB, 10 View, 11 Menu, 12 Home, 13 L3, 14 R3 |
+
+If no update arrives for 1 second while any input is held, the dongle returns the gamepad to neutral. This stops a stick or button from staying stuck when the phone disconnects. The web UI sends a heartbeat while you hold an input.
+
+> [!NOTE]
+> Games and Steam see this as a generic controller, not an Xbox controller, so you may need to map the buttons once (for example in Steam's controller settings).
+>
+> **Xbox consoles are not supported.** Xbox One and Series consoles only accept licensed controllers that pass a cryptographic authentication handshake. Keyboard and mouse input from the dongle works on Xbox; the gamepad does not.
 
 ### Script runner
 

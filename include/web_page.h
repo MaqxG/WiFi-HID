@@ -298,6 +298,80 @@ textarea {
   display: none;
   transform: translate(-50%, -50%);
 }
+.gp-wrap {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.gp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.gp-row.center { justify-content: center; }
+.gp-group { display: flex; gap: 6px; }
+.gp-btn {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 46px;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  transition: background 0.05s, transform 0.05s;
+}
+.gp-btn.small { min-width: 0; height: 32px; font-size: 11px; border-radius: 16px; }
+.gp-btn.pressed {
+  background: var(--primary) !important;
+  color: #000 !important;
+  border-color: var(--primary);
+  transform: scale(0.94);
+}
+.stick {
+  width: 136px;
+  height: 136px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--surface-alt) 0%, var(--bg) 70%);
+  border: 2px solid var(--border);
+  position: relative;
+  touch-action: none;
+}
+.stick.active { border-color: var(--primary); box-shadow: 0 0 12px var(--primary-glow); }
+.stick-knob {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3a4170, #242942);
+  border: 2px solid var(--primary);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.face, .dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+}
+.face .gp-btn, .dpad .gp-btn { min-width: 0; height: auto; padding: 0; font-size: 16px; }
+.face .gp-btn { border-radius: 50%; }
+.face-y { grid-area: 1 / 2; color: #ffd600; }
+.face-x { grid-area: 2 / 1; color: #40c4ff; }
+.face-b { grid-area: 2 / 3; color: #ff5252; }
+.face-a { grid-area: 3 / 2; color: #00e676; }
+.dpad-up    { grid-area: 1 / 2; }
+.dpad-left  { grid-area: 2 / 1; }
+.dpad-right { grid-area: 2 / 3; }
+.dpad-down  { grid-area: 3 / 2; }
 .footer-bar {
   text-align: center;
   font-size: 11px;
@@ -326,6 +400,7 @@ textarea {
   <button class="nav-btn" onclick="switchTab('tabKeys')">Keys</button>
   <button class="nav-btn" onclick="switchTab('tabShortcuts')">Shortcuts</button>
   <button class="nav-btn" onclick="switchTab('tabMouse')">Mouse</button>
+  <button class="nav-btn" onclick="switchTab('tabGamepad')">Gamepad</button>
 </nav>
 
 <main>
@@ -511,6 +586,51 @@ ENTER"></textarea>
       </div>
     </div>
   </div>
+  <!-- TAB 5: GAMEPAD -->
+  <div id="tabGamepad" class="tab-content">
+    <div class="card gp-wrap">
+      <div class="card-title">Gamepad</div>
+      <div class="gp-row">
+        <div class="gp-group">
+          <button class="gp-btn" data-gp="t:lt">LT</button>
+          <button class="gp-btn" data-gp="b:6">LB</button>
+        </div>
+        <div class="gp-group">
+          <button class="gp-btn" data-gp="b:7">RB</button>
+          <button class="gp-btn" data-gp="t:rt">RT</button>
+        </div>
+      </div>
+      <div class="gp-row center">
+        <div class="gp-group">
+          <button class="gp-btn small" data-gp="b:10">View</button>
+          <button class="gp-btn small" data-gp="b:12">Home</button>
+          <button class="gp-btn small" data-gp="b:11">Menu</button>
+        </div>
+      </div>
+      <div class="gp-row">
+        <div class="stick" id="stickL"><div class="stick-knob"></div></div>
+        <div class="face">
+          <button class="gp-btn face-y" data-gp="b:4">Y</button>
+          <button class="gp-btn face-x" data-gp="b:3">X</button>
+          <button class="gp-btn face-b" data-gp="b:1">B</button>
+          <button class="gp-btn face-a" data-gp="b:0">A</button>
+        </div>
+      </div>
+      <div class="gp-row">
+        <div class="dpad">
+          <button class="gp-btn dpad-up" data-gp="d:up">&#9650;</button>
+          <button class="gp-btn dpad-left" data-gp="d:left">&#9664;</button>
+          <button class="gp-btn dpad-right" data-gp="d:right">&#9654;</button>
+          <button class="gp-btn dpad-down" data-gp="d:down">&#9660;</button>
+        </div>
+        <div class="stick" id="stickR"><div class="stick-knob"></div></div>
+      </div>
+      <div class="gp-row">
+        <button class="gp-btn" data-gp="b:13">L3</button>
+        <button class="gp-btn" data-gp="b:14">R3</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <div class="footer-bar">
@@ -530,6 +650,7 @@ function switchTab(id) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   event.target.classList.add('active');
+  if (id !== 'tabGamepad') gpReset();
 }
 
 function updateStatus(text, ok = true) {
@@ -698,6 +819,158 @@ pad.addEventListener('touchend', (e) => {
   }
   lastTouch = null;
 }, { passive: false });
+
+// ---------------- Gamepad ----------------
+// The full gamepad state is sent on every change. Only one request is in
+// flight at a time; changes made meanwhile are merged into the next request,
+// so a slow connection never builds up a backlog of stale inputs.
+const gp = { x: 0, y: 0, z: 0, rz: 0, lt: 0, rt: 0, hat: 0, buttons: 0 };
+const dpad = { up: false, right: false, down: false, left: false };
+let gpDirty = false, gpBusy = false, gpLastSent = 0;
+
+function gpIsActive() {
+  return gp.x || gp.y || gp.z || gp.rz || gp.lt || gp.rt || gp.hat || gp.buttons;
+}
+
+function gpChanged() {
+  gpDirty = true;
+  gpPump();
+}
+
+async function gpPump() {
+  if (gpBusy || !gpDirty) return;
+  gpBusy = true;
+  gpDirty = false;
+  gpLastSent = Date.now();
+  try {
+    await fetch('/api/gamepad', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(gp)
+    });
+  } catch (e) {
+    updateStatus('Offline', false);
+  }
+  gpBusy = false;
+  if (gpDirty) gpPump();
+}
+
+// Heartbeat while input is held, so the dongle's failsafe doesn't release it
+setInterval(() => {
+  if (gpIsActive() && Date.now() - gpLastSent > 300) gpChanged();
+}, 100);
+
+function hatFromDpad() {
+  const { up, right, down, left } = dpad;
+  if (up && right) return 2;
+  if (down && right) return 4;
+  if (down && left) return 6;
+  if (up && left) return 8;
+  if (up) return 1;
+  if (right) return 3;
+  if (down) return 5;
+  if (left) return 7;
+  return 0;
+}
+
+function gpSetInput(type, val, on) {
+  if (type === 'b') {
+    const bit = 1 << parseInt(val, 10);
+    gp.buttons = on ? (gp.buttons | bit) : (gp.buttons & ~bit);
+  } else if (type === 't') {
+    gp[val] = on ? 255 : 0;
+  } else if (type === 'd') {
+    dpad[val] = on;
+    gp.hat = hatFromDpad();
+  }
+  gpChanged();
+}
+
+document.querySelectorAll('[data-gp]').forEach(el => {
+  const [type, val] = el.dataset.gp.split(':');
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('pressed');
+    haptic();
+    gpSetInput(type, val, true);
+  });
+  const release = () => {
+    if (!el.classList.contains('pressed')) return;
+    el.classList.remove('pressed');
+    gpSetInput(type, val, false);
+  };
+  el.addEventListener('pointerup', release);
+  el.addEventListener('pointercancel', release);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+const sticks = [];
+function setupStick(id, keyX, keyY) {
+  const el = document.getElementById(id);
+  const knob = el.querySelector('.stick-knob');
+  let pointerId = null;
+
+  function move(e) {
+    const r = el.getBoundingClientRect();
+    const max = r.width / 2 - 27;
+    let dx = e.clientX - (r.left + r.width / 2);
+    let dy = e.clientY - (r.top + r.height / 2);
+    const dist = Math.hypot(dx, dy);
+    if (dist > max) { dx = dx * max / dist; dy = dy * max / dist; }
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    let vx = Math.round(dx / max * 127);
+    let vy = Math.round(dy / max * 127);
+    if (Math.hypot(vx, vy) < 10) { vx = 0; vy = 0; } // small deadzone
+    if (vx !== gp[keyX] || vy !== gp[keyY]) {
+      gp[keyX] = vx;
+      gp[keyY] = vy;
+      gpChanged();
+    }
+  }
+
+  function center() {
+    pointerId = null;
+    el.classList.remove('active');
+    knob.style.transform = 'translate(-50%, -50%)';
+    gp[keyX] = 0;
+    gp[keyY] = 0;
+  }
+
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    pointerId = e.pointerId;
+    el.setPointerCapture(pointerId);
+    el.classList.add('active');
+    haptic();
+    move(e);
+  });
+  el.addEventListener('pointermove', e => { if (e.pointerId === pointerId) move(e); });
+  const end = e => {
+    if (e.pointerId !== pointerId) return;
+    center();
+    gpChanged();
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  sticks.push(center);
+}
+setupStick('stickL', 'x', 'y');
+setupStick('stickR', 'z', 'rz');
+
+// Return everything to neutral (used when leaving the tab or hiding the page)
+function gpReset() {
+  const wasActive = gpIsActive();
+  sticks.forEach(c => c());
+  for (const k in dpad) dpad[k] = false;
+  Object.assign(gp, { lt: 0, rt: 0, hat: 0, buttons: 0 });
+  document.querySelectorAll('[data-gp].pressed').forEach(el => el.classList.remove('pressed'));
+  if (wasActive) gpChanged();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) gpReset();
+});
 </script>
 </body>
 </html>

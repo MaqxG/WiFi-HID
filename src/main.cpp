@@ -9,6 +9,7 @@
 #include "USBHIDKeyboard.h"
 #include "USBHIDMouse.h"
 #include "USBHIDConsumerControl.h"
+#include "USBHIDGamepad.h"
 #include "pin_config.h"
 #include "display.h"
 #include "web_page.h"
@@ -17,6 +18,7 @@
 USBHIDKeyboard Keyboard;
 USBHIDMouse Mouse;
 USBHIDConsumerControl ConsumerControl;
+USBHIDGamepad Gamepad;
 WebServer server(80);
 DNSServer dnsServer;
 DongleDisplay display;
@@ -34,6 +36,13 @@ unsigned long lastDisplayCheck = 0;
 int lastButtonState = HIGH;
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 50;
+
+// Gamepad failsafe: if the phone stops sending updates (e.g. it disconnects
+// while a stick is held), return the gamepad to neutral after this timeout.
+// The web UI sends a heartbeat every ~300 ms while any input is active.
+const unsigned long GAMEPAD_TIMEOUT_MS = 1000;
+unsigned long lastGamepadUpdate = 0;
+bool gamepadActive = false;
 
 // --- Helper Functions for Lightweight JSON Parsing ---
 String extractJsonString(const String& json, const String& key) {
@@ -390,6 +399,56 @@ void handleApiStatus() {
     server.send(200, "application/json", resp);
 }
 
+// Map a trigger value 0..255 to the HID axis range -127..127 (rest = -127)
+static int8_t triggerToAxis(int v) {
+    return (int8_t)((v * 254) / 255 - 127);
+}
+
+void sendGamepadNeutral() {
+    Gamepad.send(0, 0, 0, 0, triggerToAxis(0), triggerToAxis(0), HAT_CENTER, 0);
+    gamepadActive = false;
+}
+
+// Receives the full gamepad state on every change:
+// {"x":0,"y":0,"z":0,"rz":0,"lt":0,"rt":0,"hat":0,"buttons":0}
+//   x,y   = left stick  (-127..127, +y is down)
+//   z,rz  = right stick (-127..127, +rz is down)
+//   lt,rt = triggers (0..255)
+//   hat   = D-pad (0 = center, 1 = up, then clockwise to 8 = up-left)
+//   buttons = bitmask, bit index = BUTTON_* constant from USBHIDGamepad.h
+void handleApiGamepad() {
+    if (!server.hasArg("plain")) {
+        server.send(400, "application/json", "{\"error\":\"Missing body\"}");
+        return;
+    }
+    String body = server.arg("plain");
+    int8_t x  = (int8_t)constrain(extractJsonInt(body, "x", 0), -127, 127);
+    int8_t y  = (int8_t)constrain(extractJsonInt(body, "y", 0), -127, 127);
+    int8_t z  = (int8_t)constrain(extractJsonInt(body, "z", 0), -127, 127);
+    int8_t rz = (int8_t)constrain(extractJsonInt(body, "rz", 0), -127, 127);
+    int lt = constrain(extractJsonInt(body, "lt", 0), 0, 255);
+    int rt = constrain(extractJsonInt(body, "rt", 0), 0, 255);
+    uint8_t hat = (uint8_t)constrain(extractJsonInt(body, "hat", 0), 0, 8);
+    uint32_t buttons = (uint32_t)extractJsonInt(body, "buttons", 0) & 0x7FFF;
+
+    // Also report the triggers as digital buttons for games that expect them
+    if (lt > 127) buttons |= (1UL << BUTTON_TL2);
+    if (rt > 127) buttons |= (1UL << BUTTON_TR2);
+
+    Gamepad.send(x, y, z, rz, triggerToAxis(lt), triggerToAxis(rt), hat, buttons);
+
+    bool active = x || y || z || rz || lt || rt || hat || buttons;
+    lastGamepadUpdate = millis();
+    if (active && !gamepadActive) {
+        // Only refresh the LCD when the gamepad becomes active; redrawing it
+        // on every report would add noticeable input latency.
+        display.updateStatus(AP_SSID, apIP.toString().c_str(), WiFi.softAPgetStationNum(), "Gamepad");
+    }
+    gamepadActive = active;
+
+    server.send(200, "application/json", "{\"status\":\"ok\"}");
+}
+
 void setup() {
     // 1. Initialize Onboard Button (BOOT / GPIO 0)
     pinMode(PIN_BUTTON_BOOT, INPUT_PULLUP);
@@ -401,6 +460,7 @@ void setup() {
     Keyboard.begin();
     Mouse.begin();
     ConsumerControl.begin();
+    Gamepad.begin();
     USB.productName("ESP32-S3 Wireless HID Dongle");
     USB.manufacturerName("Espressif");
     USB.begin();
@@ -431,6 +491,7 @@ void setup() {
     server.on("/api/media", HTTP_POST, handleApiMedia);
     server.on("/api/script", HTTP_POST, handleApiScript);
     server.on("/api/flip_screen", HTTP_POST, handleApiFlipScreen);
+    server.on("/api/gamepad", HTTP_POST, handleApiGamepad);
     server.on("/api/status", HTTP_GET, handleApiStatus);
 
     server.onNotFound(handleCaptivePortal);
@@ -461,6 +522,11 @@ void loop() {
         }
     }
     lastButtonState = reading;
+
+    // Gamepad failsafe: release everything if the phone went silent
+    if (gamepadActive && millis() - lastGamepadUpdate > GAMEPAD_TIMEOUT_MS) {
+        sendGamepadNeutral();
+    }
 
     // Periodic check for WiFi clients change (every 1 second)
     unsigned long now = millis();
